@@ -3,9 +3,15 @@ package com.dykun.my_sandbox.service;
 import com.dykun.my_sandbox.model.Item;
 import com.dykun.my_sandbox.repository.ItemRepository;
 import com.dykun.my_sandbox.request.ItemCreateRequest;
+import com.dykun.my_sandbox.request.ItemPageRequest;
 import com.dykun.my_sandbox.response.ApiResponse;
 import com.dykun.my_sandbox.response.BaseMetaData;
+import com.dykun.my_sandbox.response.PaginationMetaData;
+
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 
 import java.util.Collections;
 import java.util.List;
@@ -65,5 +71,43 @@ public class ItemService {
             return itemRepository.save(existingItem);
         }
         return null; 
+    }
+    public ApiResponse<PaginationMetaData, Item> getItemsPage(ItemPageRequest request) {
+        ApiResponse<PaginationMetaData, Item> response = new ApiResponse<>();
+        PaginationMetaData meta = new PaginationMetaData();
+        
+        long totalElements = itemRepository.count();
+
+        if (totalElements == 0) {
+            meta.setSuccess(false);
+            meta.setCode(404);
+            meta.setErrorMessage("The list is empty");
+            response.setData(Collections.emptyList());
+        } 
+        else if (request.getPage() * request.getSize() >= totalElements && request.getPage() != 0) {
+            meta.setSuccess(false);
+            meta.setCode(400);
+            meta.setErrorMessage("Page value is out of range");
+            response.setData(Collections.emptyList());
+        } 
+        else {
+            Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
+            Page<Item> pageResult = itemRepository.findAll(pageable);
+            
+            meta.setSuccess(true);
+            meta.setCode(200);
+            meta.setErrorMessage(null);
+            meta.setNumber(pageResult.getNumber());
+            meta.setSize(pageResult.getSize());
+            meta.setTotalElements(pageResult.getTotalElements());
+            meta.setTotalPages(pageResult.getTotalPages());
+            meta.setFirst(pageResult.isFirst());
+            meta.setLast(pageResult.isLast());
+            
+            response.setData(pageResult.getContent());
+        }
+        
+        response.setMeta(meta);
+        return response;
     }
 }
