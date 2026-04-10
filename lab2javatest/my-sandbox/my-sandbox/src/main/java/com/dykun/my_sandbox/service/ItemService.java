@@ -12,6 +12,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.Collections;
 import java.util.List;
@@ -22,6 +24,8 @@ public class ItemService {
 
     private final ItemRepository itemRepository;
 
+    private static final Logger log = LoggerFactory.getLogger(ItemService.class);
+
     public ItemService(ItemRepository itemRepository) {
         this.itemRepository = itemRepository;
     }
@@ -31,8 +35,13 @@ public class ItemService {
     }
 
     public Item getById(String id) {
-        return itemRepository.findById(id).orElse(null);
-    }
+            log.info("Entering method: ItemService.getById with ID: {}", id);
+            Item item = itemRepository.findById(id).orElse(null);
+            if (item != null) {
+                log.info("ItemService.getById completed successfully for ID: {}. Item name: {}", id, item.getName());
+            }
+            return item;
+        }
 
     public ApiResponse<BaseMetaData, Item> getByIdAsApiResponse(String id) {
         Item item = getById(id);
@@ -56,12 +65,17 @@ public class ItemService {
         return response;
     }
     public Item createItem(ItemCreateRequest request) {
+        log.info("Entering method: ItemService.createItem with name: {}", request.getName());
         Item newItem = new Item(UUID.randomUUID().toString(), request.getName());
-        return itemRepository.save(newItem);
+        Item savedItem = itemRepository.save(newItem);
+        log.info("ItemService.createItem completed successfully. New ID: {}", savedItem.getId());
+        return savedItem;
     }
     public void deleteItem(String id) {
+        log.info("Entering method: ItemService.deleteItem for ID: {}", id);
         if (itemRepository.existsById(id)) {
             itemRepository.deleteById(id);
+            log.info("ItemService.deleteItem completed successfully for ID: {}", id);
         }
     }
     public Item updateItem(String id, String newName) {
@@ -73,9 +87,10 @@ public class ItemService {
         return null; 
     }
     public ApiResponse<PaginationMetaData, Item> getItemsPage(ItemPageRequest request) {
+        log.info("Entering method: ItemService.getItemsPage with page: {} and size: {}", request.getPage(), request.getSize());
+        
         ApiResponse<PaginationMetaData, Item> response = new ApiResponse<>();
         PaginationMetaData meta = new PaginationMetaData();
-        
         long totalElements = itemRepository.count();
 
         if (totalElements == 0) {
@@ -105,7 +120,7 @@ public class ItemService {
             meta.setLast(pageResult.isLast());
             
             response.setData(pageResult.getContent());
-        }
+            log.info("ItemService.getItemsPage completed successfully. Returned items: {}", pageResult.getContent().size());        }
         
         response.setMeta(meta);
         return response;
